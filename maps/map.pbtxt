@@ -1,0 +1,43 @@
+item {
+  id: 1
+  name: 'start'
+}
+item {
+  id: 2
+  name: 'breads'
+}
+item {
+  id: 3
+  name: 'konti_red'
+}
+item {
+  id: 4
+  name: 'konti_blue'
+}
+item {
+  id: 5
+  name: 'mivina'
+}
+item {
+  id: 6
+  name: 'sadochok'
+}
+item {
+  id: 7
+  name: 'krock'
+}
+item {
+  id: 8
+  name: 'cookies'
+}
+item {
+  id: 9
+  name: 'cookies2'
+}
+item {
+  id: 10
+  name: 'out-of-stock'
+}
+
+
+

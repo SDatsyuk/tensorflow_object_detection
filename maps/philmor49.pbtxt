@@ -1,0 +1,196 @@
+item {
+  id: 1
+  name: 'BondBlue#6'
+}
+item {
+  id: 2
+  name: 'BondBlueSelection'
+}
+item {
+  id: 3
+  name: 'BondBlueSelection25'
+}
+item {
+  id: 4
+  name: 'BondPremiumSilver'
+}
+item {
+  id: 5
+  name: 'BondRedSelection'
+}
+item {
+  id: 6
+  name: 'BondRedSelection25'
+}
+item {
+  id: 7
+  name: 'BondSilverClassic'
+}
+item {
+  id: 8
+  name: 'BondSilverClassic25'
+}
+item {
+  id: 9
+  name: 'ChesterfieldKSBlue'
+}
+item {
+  id: 10
+  name: 'ChesterfieldKSBronze'
+}
+item {
+  id: 11
+  name: 'ChesterfieldKSRed'
+}
+item {
+  id: 12
+  name: 'LMBlueLabel'
+}
+item {
+  id: 13
+  name: 'LMLoftBlue'
+}
+item {
+  id: 14
+  name: 'LMLoftMix'
+}
+item {
+  id: 15
+  name: 'LMSmartSeriesRed'
+}
+item {
+  id: 16
+  name: 'LMLoftSeaBlue'
+}
+item {
+  id: 17
+  name: 'LMLoftNightBlue'
+}
+item {
+  id: 18
+  name: 'LMFineCutSilver'
+}
+item {
+  id: 19
+  name: 'MarlboroFlavorMix'
+}
+item {
+  id: 20
+  name: 'MarlboroGold'
+}
+item {
+  id: 21
+  name: 'MarlboroRed'
+}
+item {
+  id: 22
+  name: 'MarlboroSilver'
+}
+item {
+  id: 23
+  name: 'MarlboroTouchBlue'
+}
+item {
+  id: 24
+  name: 'MarlboroMicro'
+}
+item {
+  id: 25
+  name: 'MarlboroFineTouchLightBlue'
+}
+item {
+  id: 26
+  name: 'Muratti Green'
+}
+item {
+  id: 27
+  name: 'Muratti Peach'
+}
+item {
+  id: 28
+  name: 'Muratti Pink'
+}
+item {
+  id: 29
+  name: 'Muratty Violet'
+}
+item {
+  id: 30
+  name: 'Next Pink'
+}
+item {
+  id: 31
+  name: 'Next Violet'
+}
+item {
+  id: 32
+  name: 'ParliamentCaratBlue'
+}
+item {
+  id: 33
+  name: 'ParliamentCaratPurple'
+}
+item {
+  id: 34
+  name: 'ParliamentNightBlue'
+}
+item {
+  id: 35
+  name: 'ParliamentPearlBlue'
+}
+item {
+  id: 36
+  name: 'ParliamentPlatinum'
+}
+item {
+  id: 37
+  name: 'ParliamentSilverSuperSlims'
+}
+item {
+  id: 38
+  name: 'ParliamentAquaSuperSlims'
+}
+item {
+  id: 39
+  name: 'ParliamentAquaBlue'
+}
+item {
+  id: 40
+  name: 'ParliamentSilverBlue'
+}
+item {
+  id: 41
+  name: 'PhilipMorrisNovelMix'
+}
+item {
+  id: 42
+  name: 'PhilipMorrisBlue'
+}
+item {
+  id: 43
+  name: 'PhilipMorrisGold'
+}
+item {
+  id: 44
+  name: 'PhilipMorrisNovelBlue'
+}
+item {
+  id: 45
+  name: 'PhilipMorrisNovelMix'
+}
+item {
+  id: 46
+  name: 'PhilipMorrisNovelSilver'
+}
+item {
+  id: 47
+  name: 'PhilipMorrisRed'
+}
+item {
+  id: 48
+  name: 'PhilipMorrisRed25'
+}
+item {
+  id: 49
+  name: 'PhilipMorrisRedKingSize'
+}

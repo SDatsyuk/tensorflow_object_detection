@@ -1,0 +1,48 @@
+item {
+  id: 1
+  name: 'DavidoffSlimsGold'
+}
+item {
+  id: 2
+  name: 'DavidoffClassicBrown'
+}
+item {
+  id: 3
+  name: 'DavidoffGoldStandart'
+}
+item {
+  id: 4
+  name: 'ParkerandSimpsonBlue'
+}
+item {
+  id: 5
+  name: 'ParkerandSimpsonCompactBlue'
+}
+item {
+  id: 6
+  name: 'WestRichSilverCompact+'
+}
+item {
+  id: 7
+  name: 'WestRichBlueCompact+'
+}
+item {
+  id: 8
+  name: 'PrymaLuks8Red'
+}
+item {
+  id: 9
+  name: 'PrymaSribnaRed'
+}
+item {
+  id: 10
+  name: 'PrymaLuks6Blue'
+}
+item {
+  id: 11
+  name: 'PrymaSribnaBlue'
+}
+item {
+  id: 12
+  name: 'oos'
+}

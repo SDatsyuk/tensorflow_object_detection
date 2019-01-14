@@ -1,0 +1,28 @@
+Requirements:
+	- nvidia drivers 410 or newer
+	- nvidia-docker
+
+1. Pull TensorRT docker image to localhost
+docker pull nvcr.io/nvidia/tensorrt:18.10-py3
+18.10 - docker image version
+py3 - python version (py2 - python2)
+
+2. Run tensorRT container:
+nvidia-docker run -it --rm nvcr.io/nvidia/tensorrt:18.10-py3
+-it means interactive (work inside container)
+--rm will delete the container when finished (all progress, python requirements, files will be deleted)
+
+Bind local dir to docker container:
+-v /path/to/data:/data - path in docker container will be created automaticaly
+
+3. install python requirements (for new container, in old you must install all dependencies manualy):
+/opt/tensorrt/python/python_setup.sh
+
+4. clone tensorflow models repository:
+git clone https://github.com/tensorflow/models.git
+
+5. run tensorrt for fraph optimization:
+python tensorrt.py --frozen_graph=ssd_mobilenet_tf_1.12.pb --image_file=IMG_0060.jpg --native --fp32 --fp16 --int8 --output_dir=out_phm/ --input_node=image_tensor --batch_size=1
+
+6. for object detection models change output_node in tensorrt.py:
+output_node = ['detection_boxes', 'detection_classes', 'detection_scores', 'num_detections']

@@ -1,0 +1,32 @@
+item {
+  id: 1
+  name: 'BondRedSelection'
+}
+item {
+  id: 2
+  name: 'ChesterfieldKSBlue'
+}
+item {
+  id: 3
+  name: 'LMLoftNightBlue'
+}
+item {
+  id: 4
+  name: 'MarlboroRed'
+}
+item {
+  id: 5
+  name: 'ParliamentPearlBlue'
+}
+item {
+  id: 6
+  name: 'ParliamentAquaSuperSlims'
+}
+item {
+  id: 7
+  name: 'ParliamentSilverSuperSlims'
+}
+item {
+  id: 8
+  name: 'oos'
+}

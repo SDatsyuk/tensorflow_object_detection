@@ -1,0 +1,13 @@
+
+annotations/
+*env
+images/
+log*
+*.pb
+output/
+envs/
+snapshots/
+test*/
+tfrecord/
+*.jpg
+*.ascii

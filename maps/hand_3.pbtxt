@@ -1,0 +1,12 @@
+item {
+  id: 1
+  name: 'hand'
+}
+item {
+  id: 2
+  name: 'hand_with_something'
+}
+item {
+  id: 3
+  name: 'hand_on_something'
+}

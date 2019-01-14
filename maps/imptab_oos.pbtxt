@@ -1,0 +1,97 @@
+item {
+  id: 1
+  name: 'CamelOriginal'
+}
+item {
+  id: 2
+  name: 'ChesterfieldKSBlue'
+}
+item {
+  id: 3
+  name: 'DavidoffClassicBrown'
+}
+item {
+  id: 4
+  name: 'DavidoffGoldStandart'
+}
+item {
+  id: 5
+  name: 'DavidoffSlimsGold'
+}
+item {
+  id: 6
+  name: 'Kent6'
+}
+item {
+  id: 7
+  name: 'LMBlueLabel'
+}
+item {
+  id: 8
+  name: 'MarlboroFlavorMix'
+}
+item {
+  id: 9
+  name: 'oos'
+}
+item {
+  id: 10
+  name: 'PallMallSilver6'
+}
+item {
+  id: 11
+  name: 'ParkerandSimpsonBlue'
+}
+item {
+  id: 12
+  name: 'ParkerandSimpsonCompactBlue'
+}
+item {
+  id: 13
+  name: 'PhilipMorrisBlue'
+}
+item {
+  id: 14
+  name: 'PhilipMorrisNovelMix'
+}
+item {
+  id: 15
+  name: 'PrylukyOsoblyviBlue'
+}
+item {
+  id: 16
+  name: 'PrymaLuks6Blue'
+}
+item {
+  id: 17
+  name: 'PrymaLuks8Red'
+}
+item {
+  id: 18
+  name: 'PrymaSribnaBlue'
+}
+item {
+  id: 19
+  name: 'PrymaSribnaRed'
+}
+item {
+  id: 20
+  name: 'RothmansBlue'
+}
+item {
+  id: 21
+  name: 'WestRichBlueCompact'
+}
+item {
+  id: 22
+  name: 'WestRichSilverCompact'
+}
+item {
+  id: 23
+  name: 'WinstonClassicRed'
+}
+item {
+  id: 24
+  name: 'WinstonClassicSilver'
+}
+
