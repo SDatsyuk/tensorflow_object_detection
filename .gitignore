@@ -11,3 +11,4 @@ test*/
 tfrecord/
 *.jpg
 *.ascii
+__pycache__/
