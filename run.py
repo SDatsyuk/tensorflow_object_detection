@@ -19,7 +19,8 @@ ap.add_argument("--tfrecord", action="store_true", help="create tfrecord")
 ap.add_argument("--train", action="store_true", help="start train process")
 ap.add_argument("--eval", action="store_true", help='start eval process')
 ap.add_argument("--tensorboard", action="store_true", help='start tensorboard')
-ap.add_argument("--config", required=True, help="path to .config file")
+ap.add_argument("--export", action="store_true", help='export inference graph from model checkpoint')
+ap.add_argument("--config", default="run.config", help="path to .config file")
 
 args = vars(ap.parse_args())
 
@@ -67,9 +68,7 @@ def update_pipeline_config(config, pipeline_config):
 	if config["MODEL"]['NUM_STEPS']:
 		pipeline_config.train_config.num_steps = int(config["MODEL"]["NUM_STEPS"])
 	if config["MODEL"]["TRAIN_TFRECORD"]:
-		# print(dir(pipeline_config))
-		# print(config["MODEL"]['TRAIN_TFRECORD'])
-		pipeline_config.train_input_reader.tf_record_input_reader.input_path[0] = "output\\oxford_3_category_test\\ssd_resnet50\\tfrecord\\oxford_3_category_test_train.record"
+		pipeline_config.train_input_reader.tf_record_input_reader.input_path[0] = config['MODEL']['TRAIN_TFRECORD']
 	if config["MODEL"]["EVAL_TFRECORD"]:
 		pipeline_config.eval_input_reader.tf_record_input_reader.input_path[0] = config["MODEL"]['EVAL_TFRECORD']
 	if config["MODEL"]['MAP_FILE']:
@@ -77,28 +76,45 @@ def update_pipeline_config(config, pipeline_config):
 		pipeline_config.eval_input_reader.label_map_path = config["MODEL"]['MAP_FILE']
 	if config['MODEL']['FINE_TUNE_CHECKPOINT']:
 		pipeline_config.train_config.fine_tune_checkpoint = os.path.join(config['MODEL']['FINE_TUNE_CHECKPOINT'], 'model.ckpt')
+	pipeline_config.eval_config.visualization_export_dir = os.path.join(main_dir, 'export')
 	return pipeline_config
 
 
 def start_training(train_dir, pipeline_config_path):
-	train = Popen('python train.py --logtostderr --train_dir={} --pipeline_config_path={}'.format(train_dir, pipeline_config_path), creationflags=CREATE_NEW_CONSOLE, stdin=None, stdout=None, stderr=None)
+	train = Popen('python train.py --logtostderr --train_dir={} --pipeline_config_path={}'.format(train_dir, pipeline_config_path), stdin=None, stdout=None, stderr=None)
 	return train
 
 def start_eval(train_dir, eval_dir, pipeline_config_path):
 	evl = Popen(r"python eval.py  --logtostderr --checkpoint_dir=path/to/checkpoint_dir --eval_dir=path/to/eval_dir --pipeline_config_path= --logtostderr --checkpoint_dir={} --pipeline_config_path={} --eval_dir={}".format(train_dir, pipeline_config_path, eval_dir), creationflags=CREATE_NEW_CONSOLE,  stderr=None)
-	# print(evl.eval_err)
+	# output, error_output = evl.communicate()
+	time.sleep(10)
+
+	# print(error_output)
+
 	return evl
 
 def start_tensorboard(log_dir):
 	tensorboard = Popen('tensorboard --logdir={}'.format(log_dir), creationflags=CREATE_NEW_CONSOLE, stdin=None, stdout=None, stderr=None)
 	return tensorboard
 
-def main():
+def export_inference_graph(config):
+	train_path = os.path.join(config['MODEL']['WD'], 'train')
+	models_list = glob.glob1(train_path, 'model.ckpt-*')
+	models_sort = sorted(models_list, key=lambda k: int(k.split('model.ckpt-')[-1].split('.')[0]), reverse=True)
+	model = ".".join(models_sort[0].split('.')[:2])
+	export = Popen("python export_inference_graph.py  --input_type image_tensor --pipeline_config_path {} --trained_checkpoint_prefix {} --output_directory {}".format(config["MODEL"]["pipeline_config"], os.path.join(train_path, model), os.path.join(config["MODEL"]["WD"], 'pb')))
 
+def main():
+	global main_dir
+	print(args['config'])
 	config = read_config(args['config'])
 
 	print("Creating folders...")
-	main_dir = create_main_dir(config, OUTPUT_PATH)
+	if not config['MODEL'].get('WD', False):
+		main_dir = create_main_dir(config, OUTPUT_PATH)
+		config['MODEL']["WD"] = main_dir
+	else:
+		main_dir = config['MODEL']["WD"]
 
 	if args['tfrecord']:
 		print("Creating tfrecord...")
@@ -122,16 +138,22 @@ def main():
 	# print(type(pipeline_config[0]['ssd']))
 	# print(pipeline_config.model.HasField('ssd'))
 
+	with open(args['config'], 'w') as f:
+		config.write(f)
+
 	
 	if args['train']:
 		train_process = start_training(os.path.join(main_dir, 'train'), config['MODEL']['PIPELINE_CONFIG'])
-		time.sleep(5)
+		time.sleep(60)
 
 	if args['eval']:
 		# print('python eval.py --logtostderr --checkpoint_dir={} --pipeline_config_path={}, --eval_dir={}'.format(args['train_dir'], args['eval_dir'], args['pipeline_config_path']))
 		eval_process = start_eval(os.path.join(main_dir, 'train'), os.path.join(main_dir, 'eval'), config["MODEL"]["PIPELINE_CONFIG"])
 	if args['tensorboard']:
 		tensorboard = start_tensorboard(main_dir)
+
+	if args['export']:
+		export_inference_graph(config)
 
 
 if __name__ == "__main__":

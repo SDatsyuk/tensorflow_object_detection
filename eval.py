@@ -57,7 +57,7 @@ from object_detection.protos import pipeline_pb2
 from object_detection.utils import label_map_util
 
 import os 
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -156,8 +156,9 @@ def main(unused_argv):
   categories = label_map_util.convert_label_map_to_categories(
       label_map, max_num_classes)
 
-  evaluator.evaluate(create_input_dict_fn, model_fn, eval_config, categories,
+  metrix = evaluator.evaluate(create_input_dict_fn, model_fn, eval_config, categories,
                      FLAGS.checkpoint_dir, FLAGS.eval_dir)
+  print(metrix)
 
 
 if __name__ == '__main__':

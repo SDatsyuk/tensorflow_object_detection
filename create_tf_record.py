@@ -99,6 +99,8 @@ def dict_to_tf_example(data,
   # img_path = os.path.join(image_subdirectory, path, data['filename'])
   # print(img_path)
 
+  # img_path = os.path.join(image_subdirectory, data['filename'])
+  print(data['filename'])
   img_path = os.path.join(image_subdirectory, data['filename'])
 
   with tf.gfile.GFile(img_path, 'rb') as fid:
@@ -193,9 +195,10 @@ def create_tf_record(output_filename,
     try:
       tf_example = dict_to_tf_example(data, label_map_dict, image_dir)
     except NotFoundError:
-      print('file not found')
+      print('file not found', image_dir, data)
       continue
     writer.write(tf_example.SerializeToString())
+    break
 
   writer.close()
 

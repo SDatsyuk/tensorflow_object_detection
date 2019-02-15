@@ -31,6 +31,7 @@ from object_detection.utils import ops
 from object_detection.utils import visualization_utils as vis_utils
 
 slim = tf.contrib.slim
+logging.basicConfig(level=logging.INFO)
 
 
 def write_metrics(metrics, global_step, summary_dir):
@@ -129,7 +130,7 @@ def visualize_detection_results(result_dict,
   if show_groundtruth and input_fields.groundtruth_boxes not in result_dict:
     raise ValueError('If show_groundtruth is enabled, result_dict must contain '
                      'groundtruth_boxes.')
-  logging.info('Creating detection visualizations.')
+  logging.debug('Creating detection visualizations.')
   category_index = label_map_util.create_category_index(categories)
 
   image = np.squeeze(result_dict[input_fields.original_image], axis=0)
@@ -193,7 +194,7 @@ def visualize_detection_results(result_dict,
   summary_writer = tf.summary.FileWriterCache.get(summary_dir)
   summary_writer.add_summary(summary, global_step)
 
-  logging.info('Detection visualizations written to summary with tag %s.', tag)
+  logging.debug('Detection visualizations written to summary with tag %s.', tag)
 
 
 def _run_checkpoint_once(tensor_dict,
@@ -276,6 +277,7 @@ def _run_checkpoint_once(tensor_dict,
 
   counters = {'skipped': 0, 'success': 0}
   aggregate_result_losses_dict = collections.defaultdict(list)
+  print(tensor_dict)
   with tf.contrib.slim.queues.QueueRunners(sess):
     try:
       for batch in range(int(num_batches)):
@@ -327,6 +329,7 @@ def _run_checkpoint_once(tensor_dict,
       for key, value in iter(aggregate_result_losses_dict.items()):
         all_evaluator_metrics['Losses/' + key] = np.mean(value)
   sess.close()
+  print(all_evaluator_metrics)
   return (global_step, all_evaluator_metrics)
 
 
@@ -348,7 +351,7 @@ def repeated_checkpoint_run(tensor_dict,
   """Periodically evaluates desired tensors using checkpoint_dirs or restore_fn.
 
   This function repeatedly loads a checkpoint and evaluates a desired
-  set of tensors (provided by tensor_dict) and hands the resulting numpy
+  s et of tensors (provided by tensor_dict)and hands the resulting numpy
   arrays to a function result_processor which can be used to further
   process/save/visualize the results.
 
@@ -403,6 +406,7 @@ def repeated_checkpoint_run(tensor_dict,
 
   last_evaluated_model_path = None
   number_of_evaluations = 0
+  print(tensor_dict)
   while True:
     start = time.time()
     logging.info('Starting evaluation at ' + time.strftime(

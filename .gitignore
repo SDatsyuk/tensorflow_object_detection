@@ -12,3 +12,10 @@ tfrecord/
 *.jpg
 *.ascii
 __pycache__/
+*.py[cod]
+
+events.*
+tmp
+*.7z
+.idea
+maps

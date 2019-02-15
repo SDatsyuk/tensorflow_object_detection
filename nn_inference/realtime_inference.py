@@ -4,180 +4,179 @@ import argparse
 import numpy as np
 import cv2
 from collections import deque
+import time
+import random
 
 import label_map_util
 import visualization_utils as vis_util
+
+from utils import *
+from centroidtracker import CentroidTracker
+from pgmpy.models import BayesianModel
+from pgmpy.factors.discrete import TabularCPD
+from pgmpy.inference import VariableElimination
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--input", default=0, help="video input or camera index [default=0] ")
 ap.add_argument('--model', required=True, help='path to model file')
 ap.add_argument("--labels", required=True, help='path to label pbtxt file')
 ap.add_argument("--num_classes", required=True, help='number of classes')
-ap.add_argument("-t", "--threshold", default=0.5)
-ap.add_argument("-b", "--direction_buffer", type=int, default=32,
-	help="max direction buffer size")
+ap.add_argument("--tracking", action="store_true", help="apply tracking for recognized objects")
+ap.add_argument("--direction", action="store_true", help="apply direction for recognized objects")
+ap.add_argument("-t", "--threshold", type=float, default=0.5)
+# ap.add_argument("-b", "--direction_buffer", type=int, default=32,
+    # help="max direction buffer size")
 
 args = vars(ap.parse_args())
-pts = deque(maxlen=args['direction_buffer'])
-counter = 0
+# pts = deque(maxlen=/args['direction_buffer'])
 direction = ""
 
-def load_model(path, sess):
-	
-	with sess.graph.as_default():
-	  od_graph_def = tf.GraphDef()
-	  with tf.gfile.GFile(path, 'rb') as fid:
-	    serialized_graph = fid.read()
-	    od_graph_def.ParseFromString(serialized_graph)
-	    tf.import_graph_def(od_graph_def, name='')
-	return sess
+def probnet():
+    # Defining the model structure. We can define the network by just passing a list of edges.
+    model = BayesianModel([('H', 'S'), ('B', 'S'), ('D', 'S')])
+    # Defining individual CPDs.
+    cpd_h = TabularCPD(variable='H', variable_card=2, values=[[0.2, 0.8]])
+    cpd_b = TabularCPD(variable='B', variable_card=2, values=[[0.1, 0.9]])
+    cpd_d = TabularCPD(variable='D', variable_card=2, values=[[0.5, 0.5]])
+    cpd_s = TabularCPD(variable='S', variable_card=2, 
+                       values=[[0.1, 0.2, 0.1, 0.15, 0.4, 0.35, 0.45, 0.43],
+                               [0.9, 0.8, 0.9, 0.85, 0.6, 0.65, 0.55, 0.57]],
+                      evidence=['H', 'B', 'D'],
+                      evidence_card=[2, 2, 2])
+    # Associating the CPDs with the network
+    model.add_cpds(cpd_h, cpd_b, cpd_d, cpd_s)
+    # check_model checks for the network structure and CPDs and verifies that the CPDs are correctly 
+    # defined and sum to 1.
+    model.check_model()
+    print(model.get_cpds('S'))
+    # infer = VariableElimination(model)
+    # infer.map_query('S', evidence={'H': 1, 'B': 0, 'D': 1})
+    return model
 
-def load_labels(path, num_classes):
-	label_map = label_map_util.load_labelmap(path)
-	categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=num_classes, use_display_name=True)
-	category_index = label_map_util.create_category_index(categories)
-	return category_index
-
-def load_image_into_numpy_array(image):
-	(im_width, im_height) = image.size
-	return np.array(image.getdata()).reshape(
-	  (im_height, im_width, 3)).astype(np.uint8)
-
-def run_inference_for_single_image(image, graph, sess):
-	with graph.as_default():
-		with sess.as_default():
-      # Get handles to input and output tensors
-			ops = tf.get_default_graph().get_operations()
-			all_tensor_names = {output.name for op in ops for output in op.outputs}
-			tensor_dict = {}
-			for key in [
-				'num_detections', 'detection_boxes', 'detection_scores',
-				'detection_classes', 'detection_masks'
-			]:
-				tensor_name = key + ':0'
-				if tensor_name in all_tensor_names:
-					tensor_dict[key] = tf.get_default_graph().get_tensor_by_name(tensor_name)
-			if 'detection_masks' in tensor_dict:
-				# The following processing is only for single image
-				detection_boxes = tf.squeeze(tensor_dict['detection_boxes'], [0])
-				detection_masks = tf.squeeze(tensor_dict['detection_masks'], [0])
-				# Reframe is required to translate mask from box coordinates to image coordinates and fit the image size.
-				real_num_detection = tf.cast(tensor_dict['num_detections'][0], tf.int32)
-				detection_boxes = tf.slice(detection_boxes, [0, 0], [real_num_detection, -1])
-				detection_masks = tf.slice(detection_masks, [0, 0, 0], [real_num_detection, -1, -1])
-				detection_masks_reframed = utils_ops.reframe_box_masks_to_image_masks(detection_masks, detection_boxes, image.shape[0], image.shape[1])
-				detection_masks_reframed = tf.cast(
-					tf.greater(detection_masks_reframed, 0.5), tf.uint8)
-				# Follow the convention by adding back the batch dimension
-				tensor_dict['detection_masks'] = tf.expand_dims(
-					detection_masks_reframed, 0)
-			image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
-
-			# Run inference
-			output_dict = sess.run(tensor_dict,
-                             feed_dict={image_tensor: np.expand_dims(image, 0)})
-
-			# all outputs are float32 numpy arrays, so convert types as appropriate
-			output_dict['num_detections'] = int(output_dict['num_detections'][0])
-			output_dict['detection_classes'] = output_dict[
-          'detection_classes'][0].astype(np.uint8)
-			output_dict['detection_boxes'] = output_dict['detection_boxes'][0]
-			output_dict['detection_scores'] = output_dict['detection_scores'][0]
-#      print(output_dict['num_detections'])
-#      print(output_dict['detection_classes'])
-			# print(output_dict['detection_scores'])
-			if 'detection_masks' in output_dict:
-				output_dict['detection_masks'] = output_dict['detection_masks'][0]
-	return output_dict
-
-
-def find_direction(frame, pts):
-	global counter
-	direction = ""
-	for i in np.arange(1, len(pts)):
-		# if either of the tracked points are None, ignore
-		# them
-		if pts[i - 1] is None or pts[i] is None:
-			continue
- 
-		# check to see if enough points have been accumulated in
-		# the buffer
-		if counter >= 10 and i == 1 and pts[-10] is not None:
-			# compute the difference between the x and y
-			# coordinates and re-initialize the direction
-			# text variables
-			dX = pts[-10][0] - pts[i][0]
-			dY = pts[-10][1] - pts[i][1]
-			(dirX, dirY) = ("", "")
- 
-			# ensure there is significant movement in the
-			# x-direction
-			if np.abs(dX) > 20:
-				dirX = "to basket" if np.sign(dX) == 1 else "to package"
- 
-			# ensure there is significant movement in the
-			# y-direction
-			# if np.abs(dY) > 20:
-			# 	dirY = "North" if np.sign(dY) == 1 else "South"
- 
-			# handle when both directions are non-empty
-			direction = dirX
- 
-			# otherwise, only one direction is non-empty
-			# else:
-				# direction = dirX if dirX != "" else dirY
-
-		cv2.putText(frame, direction, (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
-		0.65, (0, 0, 255), 3)
-		thickness = int(np.sqrt(args["direction_buffer"] / float(i + 1)) * 2.5)
-		cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), thickness)
-	counter += 1
+def probnet_inference(model, h, b, d):
+    H = 1 if h > 10 else 0
+    B = 1 if b > 20 else 0
+    D = 1 if d > 3 else 0
+    print(H, B, D)
+    infer = VariableElimination(model)
+    return infer.map_query(['S'], evidence={'H': H, 'B': B, 'D': D})
 
 
 def inference():
 
-	sess = tf.Session()
-	detection_graph = load_model(args['model'], sess).graph
-	labels = load_labels(args['labels'], int(args['num_classes']))
+    # prob_model = probnet()
 
-	cap = cv2.VideoCapture(args['input'])
+    counter = 0
+    sess = tf.Session()
+    detection_graph = load_model(args['model'], sess).graph
+    labels = load_labels(args['labels'], int(args['num_classes']))
 
-	h, w = cap.get(cv2.CAP_PROP_FRAME_HEIGHT), cap.get(cv2.CAP_PROP_FRAME_WIDTH )
-	print(h, w)
+    cap = cv2.VideoCapture(int(args['input'])+cv2.CAP_DSHOW)
+    cap.set(cv2.CAP_PROP_SETTINGS, 1)
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
-	while True:
-		_, frame = cap.read()
+    h, w = cap.get(cv2.CAP_PROP_FRAME_HEIGHT), cap.get(cv2.CAP_PROP_FRAME_WIDTH )
+    print(h, w)
 
-		output_dict = run_inference_for_single_image(frame, detection_graph, sess)
+    if args['tracking']:
+        ct = CentroidTracker()
+        (H, W) = (None, None)
+        disapear_delay = 2 # seconds
+        maxDisappeared = None
+    
+    wrong_direction = 0
 
-		obj = [output_dict['detection_boxes'][i] for i in range(output_dict['num_detections']) if output_dict['detection_scores'][i] > args['threshold']]
-		if obj:
-			obj = obj[0]
-			# print(obj[2] * w / 2, obj[3] * h / 2)
-			# cv2.circle(frame, (int((obj[3] - (obj[3] - obj[1]) / 2) * w) ,int((obj[2] - (obj[2] - obj[0]) / 2) * h)), 5, (0, 0, 255), -1)
-			center = (int((obj[3] - (obj[3] - obj[1]) / 2) * w) ,int((obj[2] - (obj[2] - obj[0]) / 2) * h))
-				# print(objects)
-			pts.appendleft(center)
 
-			find_direction(frame, pts)
+    while True:
 
-		vis_util.visualize_boxes_and_labels_on_image_array(
-			frame,
-			output_dict['detection_boxes'],
-			output_dict['detection_classes'],
-			output_dict['detection_scores'],
-			labels,
-			instance_masks=output_dict.get('detection_masks'),
-			use_normalized_coordinates=True,
-			line_thickness=8, 
-			min_score_thresh=args['threshold']
-			)
+        start = time.time()
 
-		cv2.imshow('reco', frame)
+        _, frame = cap.read()
+        # frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
-		key = cv2.waitKey(1) & 0xFF
-		if key == 27:
-			break
+        if W is None or H is None:
+            (H, W) = frame.shape[:2]
+
+        start = time.time()
+        output_dict = run_inference_for_single_image(frame, detection_graph, sess)
+        print('Inference time: %s' % (time.time() - start))
+
+        if args['direction']:
+            obj = [output_dict['detection_boxes'][i] for i in range(output_dict['num_detections']) if output_dict['detection_scores'][i] > args['threshold']]
+            
+            # if obj:
+        #         obj = obj[0]
+        #         center = (int((obj[3] - (obj[3] - obj[1]) / 2) * w) ,int((obj[2] - (obj[2] - obj[0]) / 2) * h))
+        #             # print(objects)
+        #         pts.appendleft(center)
+
+        #         counter = find_direction(frame, pts, counter, args['direction_buffer'])
+
+        vis_util.visualize_boxes_and_labels_on_image_array(
+            frame,
+            output_dict['detection_boxes'],
+            output_dict['detection_classes'],
+            output_dict['detection_scores'],
+            labels,
+            instance_masks=output_dict.get('detection_masks'),
+            use_normalized_coordinates=True,
+            line_thickness=8, 
+            min_score_thresh=args['threshold']
+            )
+
+        if args['tracking']:
+            rects = []
+            # print(output_dict["detection_scores"].shape[0])
+            for i in range(0, output_dict["detection_scores"].shape[0]):
+                # filter out weak out by ensuring the predicted
+                # probability is greater than a minimum threshold
+                if output_dict["detection_scores"][i] < args["threshold"]:
+                    break
+                    # compute the (x, y)-coordinates of the bounding box for
+                    # the object, then update the bounding box rectangles list
+                box = (output_dict['detection_boxes'][i] * np.array([H, W, H, W])).astype("int"), labels[output_dict['detection_classes'][i]]['name']
+                rects.append(box)
+
+            objects = ct.update(rects)
+            
+     
+            # loop over the tracked objects
+            y_pad = 20
+            for (objectID, centroid) in objects.items():
+                # draw both the ID of the object and the centroid of the
+                # object on the output frame
+                direction = "ID {}: {}".format(objectID, ct.objectDirection[objectID])
+
+                cv2.putText(frame, direction, (10, y_pad), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                y_pad += 15
+
+                if ct.preds[objectID] == 'hand_with_somethinh' and ct.objectDirection[objectID] == "to basket":
+                    wrong_direction += 1
+
+                text = "ID {}".format(objectID)
+                cv2.putText(frame, text, (centroid[0] - 10, centroid[1] - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                cv2.circle(frame, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
+
+
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        cv2.imshow('reco', frame)
+
+        end = time.time()
+        ct.maxDisappeared = int(disapear_delay / (end - start))
+        # print(ct.maxDisappeared)
+
+        key = cv2.waitKey(30) & 0xFF
+        if key == 27:
+            break
+    print("Hand disapeared %s times" % ct.deregistered)
+    print("Hand moves with product to the basket %s times" % wrong_direction)
+
+    prob_score = probnet_inference(prob_model, ct.deregistered, wrong_direction, random.randint(1, 10))
+    print("Probability model result: %s" % prob_score)
 
 if __name__ == "__main__":
-	inference()
+    inference()
+    # prob_model = probnet()
+    # prob_score = probnet_inference(prob_model, random.randint(0, 10), random.randint(1, 8), random.randint(1, 10))
+    # print("Probability model result: %s" % prob_score)

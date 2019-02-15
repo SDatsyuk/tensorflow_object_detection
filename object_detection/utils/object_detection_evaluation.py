@@ -343,7 +343,7 @@ class WeightedPascalDetectionEvaluator(ObjectDetectionEvaluator):
         evaluate_corlocs=False,
         metric_prefix='WeightedPascalBoxes',
         use_weighted_mean_ap=True)
-
+ 
 
 class PascalInstanceSegmentationEvaluator(ObjectDetectionEvaluator):
   """A class to evaluate instance masks using PASCAL metrics."""

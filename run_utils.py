@@ -35,6 +35,7 @@ import glob
 import xml.etree.ElementTree as ET
 from PIL import Image
 import tensorflow as tf
+import datetime
 
 from object_detection.utils import dataset_util
 from object_detection.protos import pipeline_pb2
@@ -60,6 +61,7 @@ def get_class_name_from_filename(file_name):
 def dict_to_tf_example(data,
                        label_map_dict,
                        image_subdirectory,
+                       example,
                        ignore_difficult_instances=False):
   """Convert XML derived dict to tf.Example proto.
 
@@ -89,8 +91,9 @@ def dict_to_tf_example(data,
   #   path = 'bw' + path
   # img_path = os.path.join(image_subdirectory, path, data['filename'])
   # print(img_path)
-
-  img_path = os.path.join(image_subdirectory, data['filename'])
+  print(example)
+  img_name = example.split(".")[0]
+  img_path = os.path.join(image_subdirectory, img_name + '.jpg')
 
   with tf.gfile.GFile(img_path, 'rb') as fid:
     encoded_jpg = fid.read()
@@ -182,14 +185,15 @@ def create_tf_record(output_filename,
     xml = ET.fromstring(xml_str)
     data = dataset_util.recursive_parse_xml_to_dict(xml)['annotation']
     try:
-      tf_example = dict_to_tf_example(data, label_map_dict, image_dir)
+      tf_example = dict_to_tf_example(data, label_map_dict, image_dir, example)
     except NotFoundError:
-      print('file not found')
+      print('file not found', data, image_dir)
       continue
     writer.write(tf_example.SerializeToString())
+    # break
 
   writer.close()
-
+ 
 
 def read_config(path):
   config = configparser.ConfigParser()
@@ -204,15 +208,18 @@ def list_dir(path, output):
   return output
 
 def create_main_dir(config, output_path):
-  path = os.path.join(output_path, config["MODEL"]['NAME'], config['MODEL']['MODEL'])
+  path = os.path.join(output_path, config["MODEL"]['NAME'], config['MODEL']['MODEL_TYPE'])
   if not os.path.exists(path):
     print(path)
     os.makedirs(path)
+  else:
+    date = datetime.datetime.now()
+    path = os.path.join(output_path, config["MODEL"]['NAME'], config['MODEL']['MODEL_TYPE'] + date.strftime("%d%m"))
   check_subdirs(path)
   return path
 
 def check_subdirs(path):
-  for i in ['train', 'eval', 'tfrecord']:
+  for i in ['train', 'eval', 'tfrecord', 'pb', 'export']:
     sub_path = os.path.join(path, i)
     if not os.path.exists(sub_path):
       print(sub_path)

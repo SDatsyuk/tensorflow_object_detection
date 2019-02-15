@@ -87,7 +87,7 @@ def build(model_config, is_training, add_summaries=True,
     add_summaries: Whether to add tensorflow summaries in the model graph.
     add_background_class: Whether to add an implicit background class to one-hot
       encodings of groundtruth labels. Set to false if using groundtruth labels
-      with an explicit background class or using multiclass scores instead of
+      with an explicit background class or using multiclass scores instead of 
       truth in the case of distillation. Ignored in the case of faster_rcnn.
   Returns:
     DetectionModel based on the config.

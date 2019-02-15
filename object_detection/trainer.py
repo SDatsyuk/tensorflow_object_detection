@@ -398,7 +398,7 @@ def train(create_tensor_dict_fn,
         init_saver.restore(sess, train_config.fine_tune_checkpoint)
       init_fn = initializer_fn
 
-    slim.learning.train(
+    total_loss = slim.learning.train(
         train_tensor,
         logdir=train_dir,
         master=master,
@@ -412,3 +412,4 @@ def train(create_tensor_dict_fn,
         save_summaries_secs=120,
         sync_optimizer=sync_optimizer,
         saver=saver)
+    return total_loss

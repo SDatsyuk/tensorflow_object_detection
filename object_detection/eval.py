@@ -56,7 +56,7 @@ from object_detection.utils import dataset_util
 from object_detection.utils import label_map_util
 
 
-tf.logging.set_verbosity(tf.logging.INFO)
+tf.logging.set_verbosity(tf.logging.DEBUG)
 
 flags = tf.app.flags
 flags.DEFINE_boolean('eval_training_data', False,
@@ -140,7 +140,8 @@ def main(unused_argv):
       categories,
       FLAGS.checkpoint_dir,
       FLAGS.eval_dir,
-      graph_hook_fn=graph_rewriter_fn)
+      graph_hook_fn=graph_rewriter_fn,
+      evaluator_list=["coco_detection_metrics", "open_images_V2_detection_metrics", "pascal_voc_detection_metrics"])
 
 
 if __name__ == '__main__':

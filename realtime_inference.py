@@ -90,7 +90,8 @@ def inference():
 	detection_graph = load_model(args['model'], sess).graph
 	labels = load_labels(args['labels'], int(args['num_classes']))
 
-	cap = cv2.VideoCapture(args['input'])
+	cap = cv2.VideoCapture(args['input']+cv2.CAP_DSHOW)
+	cap.set(cv2.CAP_PROP_SETTINGS, 1)
 
 	while True:
 		_, frame = cap.read()

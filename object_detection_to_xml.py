@@ -55,17 +55,13 @@ ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--checkpoint", type=str, help='path to checkpoint')
 ap.add_argument('-l', '--labels', type=str, help='Path to labels (*.pbtxt)')
 ap.add_argument('-n', '--num_classes', type=int, help='Number of classes')
-ap.add_argument("-i", "--input_dir", type=str, help='input directory')
-ap.add_argument('-s', '--save', type=str, default='y', help='Paste `y` to save output images')
-ap.add_argument("-o", "--output_dir", type=str, help="output directory")
-ap.add_argument('-t', '--threshold', type=float, default=.5, help='boxes threshold')
-ap.add_argument('-a', "--annotation_dir", default=None, type=str, help="Annotation directory")
+ap.add_argument("-i", "--input_dir", type=str, help='path to images')
+ap.add_argument('-s', '--save', action='store_true', help='save images with recognition visualization')
+ap.add_argument("-o", "--output_dir", type=str, help="output directory for storing images with recognition visualization")
+ap.add_argument('-t', '--threshold', type=float, default=.5, help='recognition threshold')
+ap.add_argument('-a', "--annotation_dir", default=None, type=str, help="annotation store directory")
 args = vars(ap.parse_args())
 
-print(args)
-
-SVM_MODEL = None
-DT_MODEL = None
 
 detection_graph = tf.Graph()
 with detection_graph.as_default():
@@ -89,26 +85,17 @@ categories = label_map_util.convert_label_map_to_categories(label_map, max_num_c
 category_index = label_map_util.create_category_index(categories)
 
 
-# ## Helper code
-
-def load_image_into_numpy_array(image):
-    (im_width, im_height) = image.shape[:2]
-    return np.array(image.getdata()).reshape(
-        (im_height, im_width, 3)).astype(np.uint8)
-
-# For the sake of simplicity we will use only 2 images:
-# image1.jpg
-# image2.jpg
-# If you want to test the code with your images, just add path to the images to the TEST_IMAGE_PATHS.
-# PATH_TO_TEST_IMAGES_DIR = 'test_images'
-# TEST_IMAGE_PATHS = [ os.path.join(PATH_TO_TEST_IMAGES_DIR, 'image{}.jpg'.format(i)) for i in range(3) ]
+# find all images in folder
 TEST_IMAGE_PATHS = glob.glob1(args['input_dir'], '*.jpg')
 
 # Size, in inches, of the output images.
 IMAGE_SIZE = (12, 16)
-print(TEST_IMAGE_PATHS)
+
 
 def run_inference_for_single_image(image, graph):
+    """Inference image
+    return: np.array output_dict with detection scores, boxes, classes and detection mask if defined
+    """
     with graph.as_default():
         # with tf.Session() as sess:
         with sess.as_default():
@@ -159,8 +146,11 @@ def run_inference_for_single_image(image, graph):
     return output_dict
 
 
-# non-maximum suppression function
+
 def non_max_suppression(boxes, overlapThresh):
+    """non-maximum suppression algorithm
+    return: cleaned boxes
+    """
     if len(boxes) == 0:
         return np.array([]).astype("int")
 
@@ -200,48 +190,67 @@ def non_max_suppression(boxes, overlapThresh):
     
     return boxes[pick].astype("int")
 
-def decode_prediction(preds, im_width, im_height):
-    detections = [(normalize_coord(box, im_width, im_height), score, label) for box, label, score in zip(preds['detection_boxes'], preds['detection_classes'], preds['detection_scores']) if score > .2]
+def decode_prediction(preds, im_width, im_height, threshold=0.2):
+    """filter predictions by threshold, convert absolute coords to relative
+    preds: array with detections
+    im_height: image height
+    im_width: image width
+    threshold: object treshold
+
+    return: list of detections [[(coordinates), score, label]]
+    """
+    detections = [(*normalize_coord(box, im_width, im_height), score, label) for box, score, label in zip(preds['detection_boxes'], preds['detection_scores'], preds['detection_classes']) if score > threshold]
     # for i in range(100):
     #   if preds[]
     return detections
 
 def normalize_coord(box, im_width, im_height):
+    """Convert absolute box size to relative
+    box: np.array with absolute box coords
+    im_height: image height
+    im_width: image width
+    return: relative coords of box
+    """
     ymin, xmin, ymax, xmax = box.tolist()
     left, right, top, bottom = [int(i) for i in (xmin * im_width, xmax * im_width, ymin * im_height, ymax * im_height)]
     return left, right, top, bottom
 
 def draw_boxes(image, boxes):
+    """function for drawing rectangle
+    image: input image
+    boxes: list of boxes with relative coords
+
+    return: image with painted boxes"""
     for x0, y0, x1, y1, score, label in boxes:
         image = cv2.rectangle(image, (x0, y0), (x1, y1), (0,255,0), 5)
     return image
 
+if not os.path.exists(args['annotation_dir']):
+    os.makedirs(args['annotation_dir'])
 
-for image_path in TEST_IMAGE_PATHS:
-    start = time.time()
-    print("Reading image %s" % image_path)
+# iterate throw image list
+for i, image_path in enumerate(TEST_IMAGE_PATHS):
+    if i % 10 == 0:
+        print('Recognition %s/%s' % (i, len(TEST_IMAGE_PATHS)))
+    start = time.time() 
+    # read image
     # PILLOW
-    # image = Image.open(os.path.join(args['input_dir'], image_path))
+    image = Image.open(os.path.join(args['input_dir'], image_path))
     # opencv
-    image = cv2.imread(os.path.join(args['input_dir'], image_path))
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    im_height, im_width = image.shape[:2]
-    # print(image.shape[:2])
-    # the array based representation of the image will be used later in order to prepare the
-    # result image with boxes and labels on it.
-    # image_np = load_image_into_numpy_array(image)
-    image_np = image
+    # image = cv2.imread(os.path.join(args['input_dir'], image_path))
+    # convert to rgb
+    # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    # get image shapes
+    im_width, im_height = image.size
+    image = np.array(image)
     # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
-    image_np_expanded = np.expand_dims(image_np, axis=0)
-    # Actual detection.
-    print("Preproc time: {}".format(time.time() - start))
-    start = time.time()
-    output_dict = run_inference_for_single_image(image_np, sess.graph)
-    print("Rec time: {}".format(time.time()-start))
-  # Visualization of the results of a detection.
-
+    image_np_expanded = np.expand_dims(image, axis=0)
+    # detection
+    output_dict = run_inference_for_single_image(image, sess.graph)
+  
+    # Visualization of the results of a detection.
     vis_util.visualize_boxes_and_labels_on_image_array(
-        image_np,
+        image,
         output_dict['detection_boxes'],
         output_dict['detection_classes'],
         output_dict['detection_scores'],
@@ -252,67 +261,41 @@ for image_path in TEST_IMAGE_PATHS:
         min_score_thresh=args['threshold'],
         line_thickness=8)
 
-    if args['save'] == 'y':
+    if args['save']:
         plt.figure(figsize=IMAGE_SIZE)
-        plt.imshow(image_np)
+        plt.imshow(image)
         if not os.path.isdir(args['output_dir']):
             os.makedirs(args['output_dir'])
         plt.savefig(os.path.join(args['output_dir'], image_path))
         plt.close("all")
         # plt.show()
 
-    boxes = []
+    boxes = decode_prediction(output_dict, im_width, im_height, threshold=args['threshold'])
     # # print(output_dict['detection_scores'])
     # # break
-    for i in range(100):
-        # print(output_dict['detection_scores'])
-        if output_dict['detection_scores'][i] < args['threshold']:
-            break
-        y0, x0, y1, x1, score, label = *output_dict['detection_boxes'][i], output_dict['detection_scores'][i], output_dict['detection_classes'][i]
-        y0, x0, y1, x1, score, label = int(x0 * im_width), int(y0 * im_height), int(x1 * im_width), int(y1 * im_height), score, label
-        boxes.append((y0, x0, y1, x1, score, label))
+    # for i in range(100):
+    #     # print(output_dict['detection_scores'])
+    #     if output_dict['detection_scores'][i] < args['threshold']:
+    #         break
+    #     y0, x0, y1, x1, score, label = *output_dict['detection_boxes'][i], output_dict['detection_scores'][i], output_dict['detection_classes'][i]
+    #     y0, x0, y1, x1, score, label = int(x0 * im_width), int(y0 * im_height), int(x1 * im_width), int(y1 * im_height), score, label
+    #     boxes.append((y0, x0, y1, x1, score, label))
 
-    # # print(boxes)
-    # # print("Non maximum suppresion")
-    # boxes = non_max_suppression(np.array(boxes), 0.4).tolist()
-
-    #   # boxes = sorted(sorted(boxes, key=lambda k: k[4]), key=lambda k: k[0])
-    # boxes = sorted(sorted(boxes, key=lambda k: k[1]), key=lambda k: k[0])
-    # print(boxes)
-    # # print("XML main")
-
-    # create main xml block
+    
     if args['annotation_dir']:
-
+        # create base xml block
         annotation = create_xml_main(folder_text=args['input_dir'], filename_text=image_path, image_shape=image.shape[:2])
 
-        # print("Creating boxes")
         # create object xml tag for each recognized object
         for i in boxes:
             pack_class = category_index[int(i[5])]['name']
                 
             object_tag = create_annotation_object(pack_name=pack_class, xmin=i[0], ymin=i[1], xmax=i[2], ymax=i[3], pose='Unspecified', truncated='0', difficult='0')
+            # extend base xml with current object
             annotation.extend(object_tag)
 
-        # print(ET.dump(annotation))
         # convert ET object to string
         annotation_str = ET.tostring(annotation, pretty_print=True)
 
         # save xml file to `annotation_dir`
         s = save_xml(annotation_str, args['annotation_dir'], image_path[:-4] + ".xml")
-        print("Saving: %s" % s)
-  # break
-
-  # image = draw_boxes(image_np, boxes)
-  # plt.figure(figsize=(30, 30))
-  # plt.imshow(image)
-  # plt.savefig(os.path.join('test_images', 'rec_res', image_path))
-
-  
-  # print(output_dict['detection_boxes'])
-  # print(output_dict['detection_classes'])
-  # print(output_dict['detection_scores'])
-  #np.save("/home/pi/res.npy", output_dict)
-  #print('Saving image')
-  #cv2.imwrite('/home/pi/res_{}.jpg'.format(image_path), image_np)
-  # break
