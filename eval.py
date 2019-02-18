@@ -57,7 +57,7 @@ from object_detection.protos import pipeline_pb2
 from object_detection.utils import label_map_util
 
 import os 
-# os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 tf.logging.set_verbosity(tf.logging.INFO)
 

@@ -167,11 +167,20 @@ def main(_):
   create_input_dict_fn = functools.partial(
       input_reader_builder.build, input_config)
 
+  # TF_CONFIG={"cluster": {"ps_hosts": "192.168.1.49:2222", "worker_hosts": "192.168.1.49:2223,192.168.1.13:2223"}, "task": {"type": "worker", "index": 0}}
+  # os.environ['TF_CONFIG'] = json.dumps(TF_CONFIG)
   env = json.loads(os.environ.get('TF_CONFIG', '{}'))
+  print(env)
   cluster_data = env.get('cluster', None)
+  cluster_data['ps_hosts'] = cluster_data['ps_hosts'].split(',')
+  cluster_data['worker'] = cluster_data['worker_hosts'].split(',')
+  cluster_data['ps'] = cluster_data['ps_hosts']
+  # cluster_data['worker'] = cluster_data['worker_hosts']
+  # cluster_data['worker_hosts'] = cluster_data['worker_hosts'].split(',')
   cluster = tf.train.ClusterSpec(cluster_data) if cluster_data else None
   task_data = env.get('task', None) or {'type': 'master', 'index': 0}
   task_info = type('TaskSpec', (object,), task_data)
+  print(task_info.type)
 
   # Parameters for a single worker.
   ps_tasks = 0
@@ -192,6 +201,7 @@ def main(_):
 
   if worker_replicas >= 1 and ps_tasks > 0:
     # Set up distributed training.
+    print('Set up distributed training.')
     server = tf.train.Server(tf.train.ClusterSpec(cluster), protocol='grpc',
                              job_name=task_info.type,
                              task_index=task_info.index)
@@ -200,6 +210,7 @@ def main(_):
       return
 
     worker_job_name = '%s/task:%d' % (task_info.type, task_info.index)
+    print(worker_job_name)
     task = task_info.index
     is_chief = (task_info.type == 'master')
     master = server.target
