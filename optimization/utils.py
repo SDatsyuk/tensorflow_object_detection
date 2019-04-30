@@ -32,7 +32,7 @@ class Model():
 
     def set_total_loss(self, total_loss):
         self.total_loss = total_loss
-
+ 
     def set_eval_metrics(self, metrics):
         self.eval_metrics = metrics
 
@@ -104,18 +104,35 @@ def update_config(configs):
   return configs, ssd_generative_params
 
 def shuffle_params(configs, models):
-  print(len(models))
-  matched_threshold = models[random.choice(list(models.keys()))].params["model.ssd.matcher.argmax_matcher.matched_threshold"]
-  unmatched_threshold = min(models[random.choice(list(models.keys()))].params["model.ssd.matcher.argmax_matcher.unmatched_threshold"], matched_threshold)
-  ssd_generative_params = {
-    "model.ssd.matcher.argmax_matcher.matched_threshold": matched_threshold,
-    "model.ssd.matcher.argmax_matcher.unmatched_threshold": unmatched_threshold,
-    "model.ssd.box_predictor.convolutional_box_predictor.dropout_keep_probability": models[random.choice(list(models.keys()))].params["model.ssd.box_predictor.convolutional_box_predictor.dropout_keep_probability"],
-    "model.ssd.feature_extractor.min_depth": models[random.choice(list(models.keys()))].params["model.ssd.feature_extractor.min_depth"]
-  }
-  configs = config_util.merge_external_params_with_configs(configs, kwargs_dict=ssd_generative_params)
-  # print(configs['model'].ssd)
-  return configs, ssd_generative_params
+  if configs['model'].HasField('ssd'):
+    print(len(models))
+    matched_threshold = models[random.choice(list(models.keys()))].params["model.ssd.matcher.argmax_matcher.matched_threshold"]
+    unmatched_threshold = min(models[random.choice(list(models.keys()))].params["model.ssd.matcher.argmax_matcher.unmatched_threshold"], matched_threshold)
+    ssd_generative_params = {
+      "model.ssd.matcher.argmax_matcher.matched_threshold": matched_threshold,
+      "model.ssd.matcher.argmax_matcher.unmatched_threshold": unmatched_threshold,
+      "model.ssd.box_predictor.convolutional_box_predictor.dropout_keep_probability": models[random.choice(list(models.keys()))].params["model.ssd.box_predictor.convolutional_box_predictor.dropout_keep_probability"],
+      "model.ssd.feature_extractor.min_depth": models[random.choice(list(models.keys()))].params["model.ssd.feature_extractor.min_depth"]
+      }
+    configs = config_util.merge_external_params_with_configs(configs, kwargs_dict=ssd_generative_params)
+    # print(configs['model'].ssd)
+    return configs, ssd_generative_params
+
+  elif configs['model'].HasField('faster_rcnn'):
+    max_total_detections = models[random.choice(list(models.keys()))].params["model.faster_rcnn.second_stage_post_processing.batch_non_max_suppression.max_total_detections"]
+    faster_config_params = {
+      'model.faster_rcnn.first_stage_nms_iou_threshold': models[random.choice(list(models.keys()))].params["model.faster_rcnn.first_stage_nms_iou_threshold"],
+      "model.faster_rcnn.first_stage_max_proposals": models[random.choice(list(models.keys()))].params["model.faster_rcnn.first_stage_max_proposals"],
+      "model.faster_rcnn.first_stage_localization_loss_weight": models[random.choice(list(models.keys()))].params["model.faster_rcnn.first_stage_localization_loss_weight"],
+      "model.faster_rcnn.second_stage_localization_loss_weight": models[random.choice(list(models.keys()))].params["model.faster_rcnn.second_stage_localization_loss_weight"],
+      "model.faster_rcnn.second_stage_post_processing.batch_non_max_suppression.score_threshold": models[random.choice(list(models.keys()))].params["model.faster_rcnn.second_stage_post_processing.batch_non_max_suppression.score_threshold"],
+      "model.faster_rcnn.second_stage_post_processing.batch_non_max_suppression.iou_threshold": models[random.choice(list(models.keys()))].params["model.faster_rcnn.second_stage_post_processing.batch_non_max_suppression.iou_threshold"],
+      "model.faster_rcnn.second_stage_post_processing.batch_non_max_suppression.max_total_detections": max_total_detections,
+      "model.faster_rcnn.second_stage_post_processing.batch_non_max_suppression.max_detections_per_class": min(max_total_detections, models[random.choice(list(models.keys()))].params["model.faster_rcnn.second_stage_post_processing.batch_non_max_suppression.max_detections_per_class"])
+    }
+    configs = config_util.merge_external_params_with_configs(configs, kwargs_dict=faster_config_params)
+    return configs, faster_config_params
+
 
 def update_augmentation_options(config):
   # print(type(config))

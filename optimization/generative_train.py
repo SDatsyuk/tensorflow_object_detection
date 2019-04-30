@@ -23,13 +23,13 @@ from object_detection.utils import label_map_util
 from object_detection import eval_util
 from object_detection.utils import config_util
 
-from utils import get_configs_from_pipeline_file, update_config, update_augmentation_options, Model, shuffle_params, train_process
+from utils import get_configs_from_pipeline_file, update_augmentation_options, Model, shuffle_params, train_process
 
 # logging.basicConfig(level=logging.INFO)
 # tf.logging.set_verbosity(tf.logging.INFO)
 tf.logging.propagate = False
 
-train_steps = 2000
+train_steps = 20
 gen_iter = 2
 eval_metrics = 'pascal_voc_detection_metrics'
 top = 4
@@ -63,6 +63,56 @@ flags.DEFINE_string('model_config_path', '',
                     'Path to a model_pb2.DetectionModel config file.')
 
 FLAGS = flags.FLAGS
+
+def rand_float(min_val, max_val):
+  return round(random.uniform(min_val, max_val), 1)
+
+def rand_range(mn, mx, step=1):
+  return random.randrange(mn, mx, step)
+
+def update_config(config):
+  if config['model'].HasField('ssd'):
+    matched_threshold = rand_float(0.3, 0.7)
+    ssd_config_params = {
+      "model.ssd.matcher.argmax_matcher.matched_threshold": matched_threshold,
+      "model.ssd.matcher.argmax_matcher.unmatched_threshold": rand_float(0.3, matched_threshold),
+      "model.ssd.box_predictor.convolutional_box_predictor.dropout_keep_probability": rand_float(0.6, 0.9),
+      "model.ssd.feature_extractor.min_depth": rand_range(12, 18)
+    }
+    config = config_util.merge_external_params_with_configs(config, kwargs_dict=ssd_config_params)
+    return config, ssd_config_params
+  elif config['model'].HasField('faster_rcnn'):
+
+    """
+    batch_non_max_suppression { iou_threshold: 0.700000023842
+    batch_non_max_suppression { iou_threshold: 0.500000023842
+
+    batch_non_max_suppression {  max_detections_per_class: 100
+    batch_non_max_suppression {  max_detections_per_class: 200
+
+    batch_non_max_suppression {  max_total_detections: 100
+    batch_non_max_suppression {  max_total_detections: 300
+    """
+
+    # ValueError: max_detections_per_class should be no greater than max_total_detections.
+    max_total_detections = rand_range(100, 300, 10)
+
+    faster_config_params = {
+      'model.faster_rcnn.first_stage_nms_iou_threshold': rand_float(0.5, 0.7),
+      "model.faster_rcnn.first_stage_max_proposals": rand_range(100, 200, 10),
+      "model.faster_rcnn.first_stage_localization_loss_weight": rand_float(1.0, 2.0),
+      "model.faster_rcnn.second_stage_localization_loss_weight": rand_float(1.0, 2.0),
+      "model.faster_rcnn.second_stage_post_processing.batch_non_max_suppression.score_threshold": rand_float(0.4, 0.6),
+      "model.faster_rcnn.second_stage_post_processing.batch_non_max_suppression.iou_threshold": rand_float(0.5, 0.7),
+      "model.faster_rcnn.second_stage_post_processing.batch_non_max_suppression.max_total_detections": max_total_detections,
+      "model.faster_rcnn.second_stage_post_processing.batch_non_max_suppression.max_detections_per_class": rand_range(100, max_total_detections, 10)
+    }
+    config = config_util.merge_external_params_with_configs(config, kwargs_dict=faster_config_params)
+    return config, faster_config_params
+  else:
+    print('Use only ssd and faster rcnn models')
+
+
 
 
 def evaluate(config, train_dir, eval_dir):
@@ -286,15 +336,15 @@ def main(_):
               'eval_config': eval_config
             }
 
-  # models = first_stage_traing(configs, input_config)
+  models = first_stage_traing(configs, input_config)
 
   print("Second stage training:")
   print("Building new model with shuffled best models params")
   # with open('first_stage_best_models.pkl', 'wb') as f:
     # pickle.dump(models, f)
 
-  with open('first_stage_best_models.pkl', 'rb') as f:
-    models = pickle.load(f)
+  # with open('first_stage_best_models.pkl', 'rb') as f:
+    # models = pickle.load(f)
 
   print(models)
 
